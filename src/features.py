@@ -72,8 +72,7 @@ def build_preprocessor(X_train: pd.DataFrame) -> ColumnTransformer:
             ('cat', Pipeline([
                 ('imp', SimpleImputer(strategy='most_frequent')),
                 ('ohe', OneHotEncoder(handle_unknown='ignore', sparse_output=True)),
-            ]),
-            cat_cols),
+            ]), cat_cols),
         ],
         remainder='drop',
         verbose_feature_names_out=False,
