@@ -16,7 +16,7 @@ def parse_args():
     p.add_argument('--features', default='features',
                    help='Which feature module to import (no .py)')
     p.add_argument('--model', choices=['lr','lgbm'], default='lr')
-    p.add_argument('--study-name', default='lgbm_optuna')
+    p.add_argument('--study-name', default='lr_optuna')
     return p.parse_args()
 
 def load_data(feature_mod_name):
