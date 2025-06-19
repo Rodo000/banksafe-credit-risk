@@ -19,7 +19,7 @@ GRADE_ORDER: List[str] = list('ABCDEFG')
 # helper functions
 def _drop_high_na(df: pd.DataFrame, threshold: float) -> pd.DataFrame:
     na_ratio = df.isna().mean()
-    return df.drop(columns=na_ratio[na_ratio>threshold].index)
+    return df.drop(columns=na_ratio[na_ratio>=threshold].index)
 
 def load_df(path: Path = DUCKDB_PATH, table: str = TABLE_NAME) -> pd.DataFrame:
     # read table
