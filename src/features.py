@@ -14,10 +14,47 @@ TABLE_NAME: str = 'loans'
 HIGH_NA_THRESHOLD: float = 0.50
 TRAIN_END_YEAR = 2017
 TEST_YEAR = 2018
-GRADE_ORDER: List[str] = list('ABCDEFG')
+
+DROP_COLS = [  
+    # IDs / free text
+    'id','member_id','url','emp_title','title','desc',
+    # LC risk grade
+    'grade','sub_grade',
+    # Principal & payment snapshots
+    'out_prncp','out_prncp_inv','total_pymnt','total_pymnt_inv',
+    'total_rec_prncp','total_rec_int','total_rec_late_fee',
+    'recoveries','collection_recovery_fee','last_pymnt_amnt',
+    # Dates after origination
+    'last_pymnt_d','next_pymnt_d','last_credit_pull_d','settlement_date',
+    # Post-origination FICO / utilisation
+    'last_fico_range_high','last_fico_range_low',
+    'sec_app_fico_range_low','sec_app_fico_range_high',
+    'sec_app_revol_util','revol_bal_joint',
+    # Hardship / settlement
+    'hardship_flag','hardship_type','hardship_reason','hardship_status',
+    'hardship_start_date','hardship_end_date','hardship_length',
+    'hardship_amount','hardship_dpd','hardship_loan_status',
+    'orig_projected_additional_accrued_interest',
+    'hardship_payoff_balance_amount','hardship_last_payment_amount',
+    'debt_settlement_flag','debt_settlement_flag_date',
+    'settlement_status','settlement_amount','settlement_percentage',
+    'settlement_term',
+    # Delinquency / recovery after issue
+    'deferral_term','mths_since_last_major_derog',
+    'sec_app_mths_since_last_major_derog',
+    'mths_since_last_delinq','mths_since_last_record','mths_since_rcnt_il',
+    'mths_since_recent_bc','mths_since_recent_bc_dlq',
+    'mths_since_recent_inq','mths_since_recent_revol_delinq',
+    # Post-issue performance aggregates
+    'num_tl_120dpd_2m','num_tl_30dpd','num_tl_90g_dpd_24m',
+    'chargeoff_within_12_mths','delinq_amnt',
+    'collections_12_mths_ex_med','sec_app_collections_12_mths_ex_med'
+]
+
 
 # helper functions
-def _drop_high_na(df: pd.DataFrame, threshold: float) -> pd.DataFrame:
+def _clean_df(df: pd.DataFrame, threshold: float) -> pd.DataFrame:
+    df = df.drop(columns=DROP_COLS, errors='ignore')
     na_ratio = df.isna().mean()
     return df.drop(columns=na_ratio[na_ratio>=threshold].index)
 
@@ -31,16 +68,8 @@ def load_df(path: Path = DUCKDB_PATH, table: str = TABLE_NAME) -> pd.DataFrame:
     df['target'] = (df['loan_status'] == 'Charged Off').astype(int)
 
     # sparcity cleanup
-    df = _drop_high_na(df, HIGH_NA_THRESHOLD)
+    df = _clean_df(df, HIGH_NA_THRESHOLD)
 
-    # original grade *for analysis only*
-    if 'grade' in df.columns:
-        df['grade_int'] = (
-            df['grade'].map({g:i for i,g in enumerate(GRADE_ORDER)}).astype('Int64')
-        )
-        # remove both variables from dataset
-        df = df.drop(columns=['grade','grade_int'])
-    
     return df
 
 def temporal_split(
@@ -49,6 +78,7 @@ def temporal_split(
         test_year: int = TEST_YEAR
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
     df = df.copy()
+    df = df[df['issue_d'].notna()]
     df['issue_year'] = df['issue_d'].str[-4:].astype(int)
 
     train_mask = df['issue_year'] <= train_end_year
