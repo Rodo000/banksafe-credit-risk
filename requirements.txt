@@ -1,4 +1,5 @@
 pandas
+numpy
 pyarrow
 duckdb
 scikit-learn
@@ -7,3 +8,6 @@ shap
 streamlit
 kaggle
 fire
+optuna
+torch
+pytorch-tabnet
