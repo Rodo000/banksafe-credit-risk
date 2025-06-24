@@ -1,0 +1,9 @@
+data:
+  module: features
+  sample_frac: null      
+out_dir: /content/drive/MyDrive/banksafe-models
+tabnet:
+  device_name: cuda
+  batch_size: 16384
+max_epochs: 50
+patience: 15
