@@ -84,8 +84,8 @@ def temporal_split(
     train_mask = df['issue_year'] <= train_end_year
     test_mask = df['issue_year'] == test_year
 
-    X_train = df.loc[train_mask].drop(columns=['target','loan_status','issue_d'])
-    X_test = df.loc[test_mask].drop(columns=['target','loan_status','issue_d'])
+    X_train = df.loc[train_mask].drop(columns=['target','loan_status'])
+    X_test = df.loc[test_mask].drop(columns=['target','loan_status'])
 
     y_train = df.loc[train_mask, 'target']
     y_test = df.loc[test_mask, 'target']
