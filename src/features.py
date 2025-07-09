@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Tuple, List
 import duckdb
 import pandas as pd
+import numpy as np
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
@@ -108,11 +109,41 @@ def build_preprocessor(X_train: pd.DataFrame) -> ColumnTransformer:
         verbose_feature_names_out=False,
     )
 
+# engineered features
+def credit_age_years(df: pd.DataFrame) -> pd.Series:
+    issue    = pd.to_datetime(df['issue_d'],    format='%b-%Y')
+    earliest = pd.to_datetime(df['earliest_cr_line'], format='%b-%Y')
+    return (issue - earliest).dt.days / 365.25
+
+engineered_features = {
+    'open_total_ratio': lambda df: (
+        pd.to_numeric(df['open_acc'],  errors='coerce')
+        / pd.to_numeric(df['total_acc'], errors='coerce')
+    ).replace([np.inf,-np.inf], np.nan).fillna(0),
+    'inc_bin': lambda df: (
+        pd.qcut(
+            pd.to_numeric(df['annual_inc'], errors='coerce'),
+            5, labels=False, duplicates='drop'
+        ).fillna(0)
+    ),
+    'amnt_inc_ratio': lambda df: (
+        pd.to_numeric(df['loan_amnt'], errors='coerce')
+        / pd.to_numeric(df['annual_inc'], errors='coerce')
+    ).replace([np.inf,-np.inf], np.nan).fillna(0),
+    'credit_age_years': credit_age_years,
+}
+
 def get_data_and_preprocessor(
     duckdb_path: Path = DUCKDB_PATH,
 ) -> Tuple[ColumnTransformer, pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
     df = load_df(duckdb_path)
     X_train, X_test, y_train, y_test = temporal_split(df)
+
+    # add engineered features
+    for feat_name, feat_fn in engineered_features.items():
+        X_train[feat_name] = feat_fn(X_train)
+        X_test[feat_name]  = feat_fn(X_test)
+
     preprocessor = build_preprocessor(X_train)
     return preprocessor, X_train, X_test, y_train, y_test
 
