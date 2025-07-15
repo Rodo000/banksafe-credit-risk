@@ -8,9 +8,10 @@ from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
+import re
 
 # hyperparameters
-DUCKDB_PATH: Path = Path("data/processed/loans.duckdb")
+DUCKDB_PATH: Path = Path("data/processed/loans_full.duckdb")
 TABLE_NAME: str = 'loans'
 HIGH_NA_THRESHOLD: float = 0.50
 TRAIN_END_YEAR = 2017
@@ -59,11 +60,38 @@ def _clean_df(df: pd.DataFrame, threshold: float) -> pd.DataFrame:
     na_ratio = df.isna().mean()
     return df.drop(columns=na_ratio[na_ratio>=threshold].index)
 
+PERCENT_RE  = re.compile(r"%$")   # strip %
+CURRENCY_RE = re.compile(r"^\$")  # strip $
+
+def _coerce_numeric(col: pd.Series) -> pd.Series:
+    """Try to convert an object column to numeric. Handles %, $, commas."""
+    if col.dtype != "object":
+        return col
+
+    cleaned = (
+        col
+        .str.strip()
+        .str.replace(",", "", regex=False)           
+        .str.replace(PERCENT_RE, "", regex=True)      
+        .str.replace(CURRENCY_RE, "", regex=True)     
+        .replace({"": None, "n/a": None, "N/A": None})
+    )
+    return pd.to_numeric(cleaned, errors="ignore")   
+
+def _coerce_dates(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
+    for c in cols:
+        if c in df.columns:
+            df[c] = pd.to_datetime(df[c], format="%b-%Y", errors="coerce")
+    return df
+
 def load_df(path: Path = DUCKDB_PATH, table: str = TABLE_NAME) -> pd.DataFrame:
     # read table
     con = duckdb.connect(str(path))
     df = con.execute(f"SELECT * FROM {table}").df()
     con.close()
+
+    df = df.apply(_coerce_numeric)
+    df = _coerce_dates(df, ['issue_d','earliest_cr_line'])
 
     # label
     df['target'] = (df['loan_status'] == 'Charged Off').astype(int)
@@ -80,7 +108,7 @@ def temporal_split(
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
     df = df.copy()
     df = df[df['issue_d'].notna()]
-    df['issue_year'] = df['issue_d'].str[-4:].astype(int)
+    df['issue_year'] = df['issue_d'].dt.year
 
     train_mask = df['issue_year'] <= train_end_year
     test_mask = df['issue_year'] == test_year
