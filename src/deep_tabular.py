@@ -36,24 +36,21 @@ def _ordinal_encode(
     return X_train_arr, X_test_arr, {'cat_idxs': cat_idxs, 'cat_dims': cat_dims}, enc
 
 def load_data(module:str, sample_frac: float | None = None) -> Tuple:
-    # dinamically imports src.<module>.get_data_and_preprocessor()
     mod = importlib.import_module(f'src.{module}')
     _, X_tr_df, X_te_df, y_tr, y_te = mod.get_data_and_preprocessor()
-    
-    X_tr_arr_full, X_te_arr, cat_meta, enc = _ordinal_encode(X_tr_df, X_te_df)
-    
+
     if sample_frac:
-        X_tr_arr, _, y_tr_vals, _ = train_test_split(
-            X_tr_arr_full,
-            y_tr.values,
+        X_tr_df, _, y_tr, _ = train_test_split(
+            X_tr_df,
+            y_tr,
             train_size=sample_frac,
-            stratify=y_tr.values,
+            stratify=y_tr,
             random_state=SEED
         )
-    else:
-        X_tr_arr, y_tr_vals = X_tr_arr_full, y_tr.values
 
-    return X_tr_arr, X_te_arr, y_tr_vals, y_te.values, cat_meta, enc
+    X_tr_arr, X_te_arr, cat_meta, enc = _ordinal_encode(X_tr_df, X_te_df)
+
+    return X_tr_arr, X_te_arr, y_tr.values, y_te.values, cat_meta, enc
 
 # training rutine
 def train(cfg: Dict[str, Any]) -> None:
