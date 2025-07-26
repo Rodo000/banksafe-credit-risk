@@ -20,8 +20,6 @@ TEST_YEAR = 2018
 DROP_COLS = [  
     # IDs / free text
     'id','member_id','url','emp_title','title','desc',
-    # LC risk grade
-    'grade','sub_grade',
     # Principal & payment snapshots
     'out_prncp','out_prncp_inv','total_pymnt','total_pymnt_inv',
     'total_rec_prncp','total_rec_int','total_rec_late_fee',
